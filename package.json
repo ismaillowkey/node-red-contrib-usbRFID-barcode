@@ -1,5 +1,5 @@
 {
-  "name": "@ismaillowkey/node-red-contrib-usbRFID-barcode",
+  "name": "@ismaillowkey/node-red-contrib-usbrfid-barcode",
   "version": "0.1.8",
   "description": "Node-RED node to read USB RFID & Barcode Scanner via Windows Raw Input sniffing (keyboard-wedge, default VID 0xFFFF PID 0x0035)",
   "main": "usb-rfid.js",

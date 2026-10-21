@@ -1,4 +1,4 @@
-# @ismaillowkey/node-red-contrib-usbRFID-barcode
+# @ismaillowkey/node-red-contrib-usbrfid-barcode
 
 [English](#-english) | [Bahasa Indonesia](#-bahasa-indonesia)
 
@@ -96,7 +96,7 @@ npm link
 
 # Inside the Node-RED user directory:
 cd %USERPROFILE%\.node-red
-npm link @ismaillowkey/node-red-contrib-usbRFID-barcode
+npm link @ismaillowkey/node-red-contrib-usbrfid-barcode
 ```
 
 ---
@@ -237,7 +237,7 @@ npm link
 
 # Di dalam folder .node-red:
 cd %USERPROFILE%\.node-red
-npm link @ismaillowkey/node-red-contrib-usbRFID-barcode
+npm link @ismaillowkey/node-red-contrib-usbrfid-barcode
 ```
 
 ---
