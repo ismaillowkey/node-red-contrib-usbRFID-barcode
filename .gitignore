@@ -24,9 +24,8 @@ Desktop.ini
 *.suo
 *.user
 
-# Build symbols
+# Build outputs & executables
+bin/
+*.exe
 *.pdb
 *.obj
-
-# Pastikan binary helper tetap ter-track
-!bin/win/RawInputBridge.exe
