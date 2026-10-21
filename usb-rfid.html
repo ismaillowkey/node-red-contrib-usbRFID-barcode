@@ -1,0 +1,315 @@
+<script type="text/javascript">
+    RED.nodes.registerType('usb-rfid', {
+        category: 'input',
+        color: '#3FADB5',
+        paletteLabel: 'usb rfid/keyboard',
+        defaults: {
+            name: { value: "" },
+            deviceMode: { value: "auto" },
+            devicePath: { value: "" },
+            deviceLabel: { value: "" },
+            vid: { value: "0xFFFF" },
+            pid: { value: "0x0035" },
+            debounce: { value: 1000, required: true, validate: RED.validators.number() }
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: "font-awesome/fa-id-card",
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            if (this.deviceMode === "any") {
+                return "usb rfid/keyboard (All / Semua)";
+            }
+            if (this.deviceMode === "selected") {
+                if (this.deviceLabel) {
+                    return "usb rfid/keyboard (" + this.deviceLabel + ")";
+                }
+                return "usb rfid/keyboard (Select / Pilih)";
+            }
+            return "usb rfid/keyboard (" + (this.vid || "0xFFFF") + ")";
+        },
+        labelStyle: function () {
+            if (this.name) {
+                return "node_label_italic";
+            }
+            return "";
+        },
+        oneditprepare: function () {
+            const node = this;
+            let apiEndpoint = "usb-rfid/devices";
+            let imageEndpoint = "usb-rfid/reader-image";
+
+            if (RED.settings) {
+                if (RED.settings.httpAdminRoot) {
+                    let root = RED.settings.httpAdminRoot;
+                    if (root.slice(-1) !== "/") {
+                        root = root + "/";
+                    }
+                    apiEndpoint = root + "usb-rfid/devices";
+                    imageEndpoint = root + "usb-rfid/reader-image";
+                }
+            }
+
+            // Pasang sumber gambar fisik reader
+            $("#usb-rfid-device-image").attr("src", imageEndpoint);
+
+            const modeField = $("#node-input-deviceMode");
+            const deviceSelect = $("#node-input-devicePath");
+            const refreshButton = $("#node-button-refresh-hid");
+            const deviceRow = $("#usb-rfid-device-row");
+            const autoOptions = $("#usb-rfid-auto-options");
+            let devicesByPath = {};
+
+            // Atur tampilan baris formulir berdasarkan mode perangkat yang dipilih
+            function updateVisibility() {
+                const mode = modeField.val() || "auto";
+
+                if (mode === "selected") {
+                    deviceRow.show();
+                    autoOptions.hide();
+                } else if (mode === "any") {
+                    deviceRow.hide();
+                    autoOptions.hide();
+                } else {
+                    // Mode "auto" (Otomatis berdasarkan VID & PID)
+                    deviceRow.hide();
+                    autoOptions.show();
+                }
+            }
+
+            // Isi dropdown dengan perangkat keyboard/wedge yang terdeteksi
+            function renderDevices(devices, selectedPath) {
+                devicesByPath = {};
+                deviceSelect.empty();
+
+                if (!devices || devices.length === 0) {
+                    deviceSelect.append($("<option>", {
+                        value: "",
+                        text: "No device detected / Tidak ada perangkat terdeteksi"
+                    }));
+                    if (selectedPath) {
+                        deviceSelect.append($("<option>", {
+                            value: selectedPath,
+                            text: "(not detected / tidak terdeteksi) " + selectedPath
+                        }));
+                        deviceSelect.val(selectedPath);
+                    }
+                    return;
+                }
+
+                deviceSelect.append($("<option>", {
+                    value: "",
+                    text: "-- Select device / Pilih perangkat --"
+                }));
+
+                devices.forEach(function (dev) {
+                    if (!dev.path) {
+                        return;
+                    }
+                    devicesByPath[dev.path] = dev;
+                    deviceSelect.append($("<option>", {
+                        value: dev.path,
+                        text: dev.label
+                    }));
+                });
+
+                if (selectedPath) {
+                    if (devicesByPath[selectedPath]) {
+                        deviceSelect.val(selectedPath);
+                    } else {
+                        deviceSelect.append($("<option>", {
+                            value: selectedPath,
+                            text: "(not detected / tidak terdeteksi) " + selectedPath
+                        }));
+                        deviceSelect.val(selectedPath);
+                    }
+                }
+            }
+
+            // Ambil ulang daftar perangkat (tombol Refresh)
+            function loadDevices() {
+                let selectedPath = "";
+                if (deviceSelect.val()) {
+                    selectedPath = deviceSelect.val();
+                } else if (node.devicePath) {
+                    selectedPath = node.devicePath;
+                }
+
+                refreshButton.prop("disabled", true);
+                refreshButton.find("i").addClass("fa-spin");
+
+                let requestUrl = apiEndpoint + "?_=" + Date.now();
+
+                $.getJSON(requestUrl)
+                    .done(function (data) {
+                        let list = [];
+                        if (data && Array.isArray(data.devices)) {
+                            list = data.devices;
+                        }
+                        renderDevices(list, selectedPath);
+                    })
+                    .fail(function (xhr) {
+                        deviceSelect.empty();
+                        let failText = "-- Failed to load devices / Gagal memuat daftar perangkat --";
+                        if (selectedPath) {
+                            failText = "(failed / gagal memuat) " + selectedPath;
+                        }
+                        deviceSelect.append($("<option>", {
+                            value: selectedPath,
+                            text: failText
+                        }));
+                        if (selectedPath) {
+                            deviceSelect.val(selectedPath);
+                        }
+                    })
+                    .always(function () {
+                        refreshButton.prop("disabled", false);
+                        refreshButton.find("i").removeClass("fa-spin");
+                    });
+            }
+
+            // Isi otomatis VID/PID saat perangkat dipilih
+            deviceSelect.on("change", function () {
+                const dev = devicesByPath[deviceSelect.val()];
+
+                if (dev) {
+                    if (dev.vendorIdHex) {
+                        $("#node-input-vid").val(dev.vendorIdHex);
+                    }
+                    if (dev.productIdHex) {
+                        $("#node-input-pid").val(dev.productIdHex);
+                    }
+                    if (dev.label) {
+                        $("#node-input-deviceLabel").val(dev.label);
+                    }
+                } else {
+                    $("#node-input-deviceLabel").val("");
+                }
+            });
+
+            modeField.on("change", updateVisibility);
+
+            refreshButton.on("click", function (event) {
+                event.preventDefault();
+                loadDevices();
+            });
+
+            if (!node.deviceMode) {
+                modeField.val("auto");
+            }
+
+            if (node.devicePath) {
+                deviceSelect.append($("<option>", {
+                    value: node.devicePath,
+                    text: node.devicePath
+                }));
+                deviceSelect.val(node.devicePath);
+            } else {
+                deviceSelect.append($("<option>", {
+                    value: "",
+                    text: "-- Select device / Pilih perangkat --"
+                }));
+                deviceSelect.val("");
+            }
+
+            updateVisibility();
+            loadDevices();
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="usb-rfid">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name / Nama</label>
+        <input type="text" id="node-input-name" placeholder="USB RFID Reader">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-deviceMode"><i class="fa fa-plug"></i> Mode / Mode Perangkat</label>
+        <select id="node-input-deviceMode" style="width:70%">
+            <option value="auto">Manual (VID &amp; PID) / Manual (VID &amp; PID)</option>
+            <option value="selected">Select device / Pilih perangkat tertentu</option>
+            <option value="any">All devices / Semua perangkat keyboard</option>
+        </select>
+    </div>
+
+    <div class="form-row" id="usb-rfid-device-row" style="display:none;">
+        <label for="node-input-devicePath"><i class="fa fa-usb"></i> Device / Perangkat</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <select id="node-input-devicePath" style="flex:1 1 auto;min-width:0;"></select>
+            <button type="button" class="red-ui-button red-ui-button-small" id="node-button-refresh-hid">
+                <i class="fa fa-refresh"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Gambar USB RFID Reader ditaruh tepat di bawah Combobox -->
+    <div class="form-row" id="usb-rfid-image-container" style="text-align:center;margin-top:10px;margin-bottom:14px;">
+        <div style="display:inline-block;padding:8px 12px;background:#ffffff;border:1px solid #d0d0d0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.08);max-width:320px;">
+            <img id="usb-rfid-device-image" alt="USB RFID Reader" style="max-width:240px;max-height:160px;display:block;border-radius:4px;object-fit:contain;margin:0 auto;" />
+            <div style="font-size:12px;color:#222;margin-top:6px;font-weight:bold;">
+                USB RFID Reader (Keyboard Wedge)
+            </div>
+            <div style="font-size:11px;color:#666;margin-top:2px;">
+                <b>EN:</b> Tap RFID card on reader | <b>ID:</b> Tempelkan kartu RFID pada alat
+            </div>
+        </div>
+    </div>
+
+    <div id="usb-rfid-auto-options">
+        <div class="form-row">
+            <label for="node-input-vid"><i class="fa fa-usb"></i> VID</label>
+            <input type="text" id="node-input-vid" placeholder="0xFFFF">
+        </div>
+
+        <div class="form-row">
+            <label for="node-input-pid"><i class="fa fa-barcode"></i> PID</label>
+            <input type="text" id="node-input-pid" placeholder="0x0035">
+        </div>
+
+        <div class="form-row">
+            <label for="node-input-debounce"><i class="fa fa-clock-o"></i> Debounce (ms)</label>
+            <input type="number" id="node-input-debounce" placeholder="1000" min="100" step="100">
+        </div>
+
+        <div class="form-tips">
+            <b>EN:</b> In <b>Manual</b> mode, enter the Vendor ID (VID) and Product ID (PID) to target your reader.<br>
+            <b>ID:</b> Pada mode <b>Manual</b>, masukkan Vendor ID (VID) dan Product ID (PID) untuk menentukan reader.
+        </div>
+    </div>
+
+    <input type="hidden" id="node-input-deviceLabel">
+</script>
+
+<script type="text/html" data-help-name="usb-rfid">
+    <p><b>EN:</b> Reads USB RFID cards and Barcode scanners operating in keyboard-wedge mode using the <b>Windows Raw Input API</b> (WM_INPUT) without requiring window focus.</p>
+    <p><b>ID:</b> Membaca kartu RFID dan Barcode Scanner dari perangkat USB berbasis keyboard-wedge menggunakan teknik penyadapan <b>Windows Raw Input API</b> (WM_INPUT) tanpa perlu fokus jendela.</p>
+
+    <h3>Output / Keluaran</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>
+            JSON object containing scan result / Objek JSON hasil pemindaian:
+            <ul>
+                <li><code>timestamp</code>: ISO 8601 scan timestamp / Waktu pemindaian kartu.</li>
+                <li><code>uuid</code>: RFID card UID or barcode string / Nomor UID kartu atau teks barcode (e.g. <code>2607403959</code>).</li>
+            </ul>
+        </dd>
+    </dl>
+
+    <h3>Configuration / Konfigurasi</h3>
+    <ul>
+        <li><strong>Mode / Mode Perangkat:</strong>
+            <ul>
+                <li><em>Auto (VID &amp; PID) / Otomatis (VID &amp; PID)</em>: Automatically finds reader matching VID &amp; PID (default 0xFFFF:0x0035). / Mencari reader yang cocok dengan VID &amp; PID.</li>
+                <li><em>Select device / Pilih perangkat tertentu</em>: Select a specific reader from dropdown. / Memilih salah satu reader dari daftar dropdown.</li>
+                <li><em>All devices / Semua perangkat</em>: Captures scans from any keyboard-wedge device. / Menangkap input dari seluruh perangkat keyboard.</li>
+            </ul>
+        </li>
+        <li><strong>Vendor ID (VID):</strong> Hexadecimal (e.g. <code>0xFFFF</code>) or decimal (e.g. <code>65535</code>).</li>
+        <li><strong>Product ID (PID):</strong> Hexadecimal (e.g. <code>0x0035</code>) or decimal (e.g. <code>53</code>).</li>
+        <li><strong>Debounce (ms):</strong> Minimum delay before duplicate card read is accepted (default 1000 ms) / Jeda minimum sebelum kartu yang sama diproses ulang.</li>
+    </ul>
+</script>

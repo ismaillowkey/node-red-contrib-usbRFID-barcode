@@ -1,0 +1,30 @@
+{
+  "name": "@ismaillowkey/node-red-contrib-usbRFID-barcode",
+  "version": "0.1.8",
+  "description": "Node-RED node to read USB RFID & Barcode Scanner via Windows Raw Input sniffing (keyboard-wedge, default VID 0xFFFF PID 0x0035)",
+  "main": "usb-rfid.js",
+  "scripts": {
+    "test": "node --test test/unit.test.js test/raw-input.test.js",
+    "build:helper": "build-helper.bat"
+  },
+  "keywords": [
+    "node-red",
+    "rfid",
+    "barcode",
+    "usb-rfid",
+    "usb-barcode",
+    "raw-input",
+    "keyboard-wedge",
+    "windows",
+    "ic-reader",
+    "sycreader"
+  ],
+  "author": "Paduka Raja.ST",
+  "license": "MIT",
+  "dependencies": {},
+  "node-red": {
+    "nodes": {
+      "usb-rfid": "usb-rfid.js"
+    }
+  }
+}
