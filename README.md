@@ -81,25 +81,12 @@ Open CMD or PowerShell:
 cd %USERPROFILE%\.node-red
 
 # 2. Install the package from your local folder
-npm install "d:\DATA\App software bikinan\node-red-usb-rfid"
+npm install "d:\YOURFOLDER\node-red-usb-rfid"
 
 # 3. Start Node-RED
 node-red
 ```
 
-### Option 2: Using `npm link` (Development Mode)
-
-```bash
-# Inside the package directory:
-cd "d:\DATA\App software bikinan\node-red-usb-rfid"
-npm link
-
-# Inside the Node-RED user directory:
-cd %USERPROFILE%\.node-red
-npm link @ismaillowkey/node-red-contrib-usbrfid-barcode
-```
-
----
 
 ## 🛠️ Usage in Node-RED Flow
 
@@ -222,22 +209,10 @@ Buka terminal CMD atau PowerShell:
 cd %USERPROFILE%\.node-red
 
 # 2. Pasang paket dari direktori proyek
-npm install "d:\DATA\App software bikinan\node-red-usb-rfid"
+npm install "d:\YOURFOLDER\node-red-usb-rfid"
 
 # 3. Jalankan kembali Node-RED
 node-red
-```
-
-### Metode 2: Menggunakan `npm link` (Mode Pengembangan)
-
-```bash
-# Di dalam folder proyek node-red-usb-rfid:
-cd "d:\DATA\App software bikinan\node-red-usb-rfid"
-npm link
-
-# Di dalam folder .node-red:
-cd %USERPROFILE%\.node-red
-npm link @ismaillowkey/node-red-contrib-usbrfid-barcode
 ```
 
 ---
